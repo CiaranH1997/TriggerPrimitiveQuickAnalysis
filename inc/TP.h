@@ -4,6 +4,8 @@
 #include <iostream>
 
 struct TP {
+  unsigned int channel_id;
+  int rop_id;
   long time_peak;
   unsigned int adc_int;
   int event;

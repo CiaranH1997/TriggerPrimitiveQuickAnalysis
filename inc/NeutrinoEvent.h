@@ -1,5 +1,8 @@
+#ifndef INC_NUEVENT_H_
+#define INC_NUEVENT_H_
+
 #include "Event.h"
-#include "TP.h"
+#include "Neutrino.h"
 
 #include <vector>
 
@@ -7,15 +10,15 @@
 
 class NeutrinoEvent : public Event {
   public:
-    void AddEventTPs(std::vector<TP> TPs);
+    NeutrinoEvent(int ev_num, std::vector<TP> TPs) : Event(ev_num, TPs) {}
 
-    void InitialiseTruth(int truth_event, double E, int tpcid, int pdg, int ccnc);
+    void InitialiseTruth(int truth_event, double E, int tpcid, int pdg, int ccnc) override;
+    void InitialiseTruth(Neutrino nu) override;
+
+    Neutrino GetNeutrino() const;
 
   protected:
-    //std::vector<TP> event_tps;
-    //int event_num;
-    double nu_energy;
-    int tpc_id;
-    int nu_pdg;
-    int nu_ccnc;
+    Neutrino nu;
 };
+
+#endif
