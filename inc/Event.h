@@ -22,6 +22,7 @@ class Event {
     
     virtual void InitialiseTruth(int truth_event, double E, int tpcid, int pdg, int ccnc) = 0;
     virtual void InitialiseTruth(Neutrino nu) = 0;
+    virtual Neutrino GetNeutrino() const = 0;
 
     virtual ~Event() {};
 

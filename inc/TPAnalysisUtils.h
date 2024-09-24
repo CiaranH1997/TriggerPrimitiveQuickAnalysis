@@ -18,10 +18,10 @@ std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string nufiles, int file_ty
 
 namespace cut {
 
-  //void TimeFilterAlg(double const &time_window, std::vector<int> &max_adc_sum, std::vector<int> &max_tp_multiplicity, std::vector<std::unique_ptr<Event>> tpc_events);
-  //bool TimeFilterAlg(double const &adc_cut, double const &time_window, std::unique_ptr<Event> &tpc_event);
+  // Time filter for offline
   bool TimeFilterAlg(double const &adc_cut, double const &time_window, std::vector<int> &max_adc_sum, std::vector<int> &max_tp_multiplicity, std::unique_ptr<Event> &tpc_event);
-
+  // ADC Integral Sum cut for online trigger
+  bool ADCIntegralSumCut(double const &adc_cut, double const &time_window, std::vector<int> &adc_sum, std::vector<int> &tp_multiplicity, std::unique_ptr<Event> &tpc_event);
 
 }
 

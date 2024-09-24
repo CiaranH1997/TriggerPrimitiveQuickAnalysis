@@ -2,6 +2,7 @@
 #define INC_COSEVENT_H_
 
 #include "Event.h"
+#include "Neutrino.h"
 
 #include <vector>
 
@@ -13,6 +14,11 @@ class CosmicEvent : public Event {
     
     void InitialiseTruth(int truth_event, double E, int tpcid, int pdg, int ccnc) override;
     void InitialiseTruth(Neutrino nu) override;
+    Neutrino GetNeutrino() const override {
+      std::cout << "[ERROR] Should not givng a cosmic event neutrino information." << std::endl;
+      Neutrino nu;
+      return nu;
+    }
 };
 
 #endif

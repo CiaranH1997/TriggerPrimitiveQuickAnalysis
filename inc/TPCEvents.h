@@ -1,7 +1,6 @@
 #ifndef INC_TPCEVENTS_H_
 #define INC_TPCEVENTS_H_
 
-//#include "Event.h"
 #include "NeutrinoEvent.h"
 #include "CosmicEvent.h"
 
@@ -19,10 +18,10 @@ class TPCEvents {
 
     int GetTPCID();
 
-    std::vector<std::unique_ptr<Event>> GetTPCEvents();
+    std::vector<std::unique_ptr<Event>>& GetTPCEvents();
 
-    //void CutEvent(int event_num);
     void CutEvent(std::unique_ptr<Event> &event);
+    void CutEvent(int &event_num);
 
   protected:
     int tpc_id;

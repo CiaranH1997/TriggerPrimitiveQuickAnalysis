@@ -2,6 +2,7 @@
 #include "NeutrinoEvent.h"
 #include "CosmicEvent.h"
 
+//-------------------------------
 TPCEvents::TPCEvents(int tpc, std::vector<std::unique_ptr<Event>> events, int event_type) {
   tpc_id = tpc;
 
@@ -22,6 +23,7 @@ TPCEvents::TPCEvents(int tpc, std::vector<std::unique_ptr<Event>> events, int ev
       
 }
 
+//-------------------------------
 std::vector<std::unique_ptr<Event>> TPCEvents::RemoveOutOfTPCHits(std::vector<std::unique_ptr<Event>> &in_events, int event_type) {
   std::vector<std::unique_ptr<Event>> ret;
 
@@ -32,12 +34,11 @@ std::vector<std::unique_ptr<Event>> TPCEvents::RemoveOutOfTPCHits(std::vector<st
         tp_tpc.push_back(tp);
       }
     }
-    //std::unique_ptr<Event> ev_ret = std::make_unique<Event>(ev->GetEventNum(), tp_tpc);
     std::unique_ptr<Event> ev_ret;
     if (event_type == 0) {
       ev_ret = std::make_unique<CosmicEvent>(ev->GetEventNum(), tp_tpc);
     } else if (event_type == 1) {
-      ev_ret = std::make_unique<NeutrinoEvent>(ev->GetEventNum(), tp_tpc);
+      ev_ret = std::make_unique<NeutrinoEvent>(ev->GetEventNum(), tp_tpc, ev->GetNeutrino());
     }
     ret.push_back(std::move(ev_ret));
   }
@@ -45,33 +46,61 @@ std::vector<std::unique_ptr<Event>> TPCEvents::RemoveOutOfTPCHits(std::vector<st
   return ret;
 }
 
-/*
+//-------------------------------
 void TPCEvents::CutOutOfTPCNeutrinos() {
   std::vector<std::unique_ptr<Event>> temp; 
+  for (auto &evs : this->tpc_events) {
+    if (evs) {
+      std::cout << "GetNeutrino() tpc id = " << evs->GetNeutrino().tpc_id << "; tpc id in TPCEvents = " << tpc_id << std::endl;
+      if (evs->GetNeutrino().tpc_id == tpc_id) {
+        std::cout << "Neutrino in TPC " << tpc_id << std::endl;
+        temp.emplace_back(std::move(evs));
+      }
+    }
+  }
+  std::cout << "Size of temp = " << temp.size() << "; And size of tpc_events = " << tpc_events.size() << std::endl;
+  tpc_events.clear();
+  tpc_events = std::move(temp);
+  std::cout << "Size of tpc_events NOW = " << tpc_events.size() << std::endl;
+}
+
+//-------------------------------
+int TPCEvents::GetTPCID() {
+  return tpc_id;
+}
+
+//-------------------------------
+std::vector<std::unique_ptr<Event>>& TPCEvents::GetTPCEvents() {
+  return tpc_events; 
+}
+
+//-------------------------------
+void TPCEvents::CutEvent(std::unique_ptr<Event> &event) {
+  std::vector<std::unique_ptr<Event>> temp; 
   for (auto &evs : tpc_events) {
-    if (evs->GetNeutrino().tpc_id == tpc_id) {
+    if (evs && evs->GetEventNum() != event->GetEventNum()) {
       temp.emplace_back(std::move(evs));
+    } else if (evs) { 
+      std::cout << "Removing event " << event->GetEventNum() << std::endl; 
+    } else {
+      std::cout << "[WARNING] Null event pointer." << std::endl;
     }
   }
   tpc_events.clear();
   tpc_events = std::move(temp);
 }
-*/
-int TPCEvents::GetTPCID() {
-  return tpc_id;
-}
 
-std::vector<std::unique_ptr<Event>> TPCEvents::GetTPCEvents() {
-  return std::move(tpc_events); 
-}
-
-//void TPCEvents::CutEvent(int event_num) {
-void TPCEvents::CutEvent(std::unique_ptr<Event> &event) {
-  std::vector<std::unique_ptr<Event>> temp;// = std::move(tpc_events);  
-  for (int i = 0; i < (int)tpc_events.size(); i++) {
-    // removing event_num from list of events in TPC
-    //if (i+1 != event_num) temp.emplace_back(std::move(tpc_events.at(i)));
-    if (i+1 != event->GetEventNum()) temp.emplace_back(std::move(tpc_events.at(i)));
+//-------------------------------
+void TPCEvents::CutEvent(int &event_num) {
+  std::vector<std::unique_ptr<Event>> temp; 
+  for (auto &evs : tpc_events) {
+    if (evs && evs->GetEventNum() != event_num) {
+      temp.emplace_back(std::move(evs));
+    } else if (evs) { 
+      std::cout << "Removing event " << event_num << std::endl; 
+    } else {
+      std::cout << "[WARNING] Null event pointer." << std::endl;
+    }
   }
   tpc_events.clear();
   tpc_events = std::move(temp);

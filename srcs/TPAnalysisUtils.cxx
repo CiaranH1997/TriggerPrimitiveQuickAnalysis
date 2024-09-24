@@ -95,7 +95,7 @@ std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string tpfile, int file_typ
   unsigned short ADC_peak;
   long Start_time, Time_over_threshold, Time_peak;
             
-  tree->SetBranchAddress("tpEvent", &tpEvent);
+  tree->SetBranchAddress("Event", &tpEvent);
   tree->SetBranchAddress("ROP_ID", &ROP_ID);
   tree->SetBranchAddress("ChannelID", &ChannelID);
   tree->SetBranchAddress("ADC_integral", &ADC_integral);
@@ -114,11 +114,14 @@ std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string tpfile, int file_typ
     TP event_tp = {ChannelID, ROP_ID, Time_peak, ADC_integral, tpEvent};
     v_TP.push_back(event_tp);
   }
+  std::cout << "Sort by event." << std::endl;
   auto v_v_TPs = sortByEvent(v_TP);
+  std::cout << "Events sorted." << std::endl;
 
   std::vector<std::unique_ptr<Event>> ret;
 
-  int ev_num(0);
+  std::cout << "Make vector of events." << std::endl;
+  int ev_num(1);
   for (const auto &ev : v_v_TPs) {
     if (file_type == 0) { // Cosmic Events
       ret.emplace_back(std::make_unique<CosmicEvent>(ev_num, ev));
@@ -128,14 +131,17 @@ std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string tpfile, int file_typ
       std::cout << "[ERROR] Unknown file type!" << std::endl;
       exit(1);
     }
+    ev_num++;
   }
 
   return ret;
 }
 
+
+// Cut imlementations here. One day split these into their own file.
+
+// Time filter for offline
 //------------------------------------
-//bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::vector<int> &max_adc_sum, std::vector<int> &max_tp_multiplicity, std::unique_ptr<Event> &tpc_event) {
-//bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::unique_ptr<Event> &tpc_event) {
 bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::vector<int> &max_adc_sum, std::vector<int> &max_tp_multiplicity, std::unique_ptr<Event> &tpc_event) {
 
   std::deque<TP> tp_collection;
@@ -147,7 +153,7 @@ bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::v
       tp_collection.pop_front();
     }
     if (!tp_collection.empty()) {
-		  std::cout << "Current time peak = " << tp.time_peak << ", earliest time peak = " << tp_collection.front().time_peak << ", WINDOW = " << tp.time_peak - tp_collection.front().time_peak << std::endl;
+		  //std::cout << "Current time peak = " << tp.time_peak << ", earliest time peak = " << tp_collection.front().time_peak << ", WINDOW = " << tp.time_peak - tp_collection.front().time_peak << std::endl;
     }
     // Add current TP to the collection
     tp_collection.push_back(tp);
@@ -165,12 +171,29 @@ bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::v
     if (current_tp_multiplicity > event_max_tp_multiplicity) {
       event_max_tp_multiplicity = current_tp_multiplicity;
     }
-		std::cout << "MAX ADC INT SUM = " << event_max_adc_sum << std::endl;
 	}
 	max_adc_sum.push_back(event_max_adc_sum);
 	max_tp_multiplicity.push_back(event_max_tp_multiplicity);
 	tp_collection.clear();
 
   if (event_max_adc_sum > adc_cut) return 1;
+  else return 0;
+}
+
+// ADC Intgral Sum cut for online
+//------------------------------------
+bool cut::ADCIntegralSumCut(double const &adc_cut, double const &time_window, std::vector<int> &adc_sum, std::vector<int> &tp_multiplicity, std::unique_ptr<Event> &tpc_event) {
+
+  int event_adc_sum(0);
+  int event_tp_multiplicity(0);
+  for (const auto& tp : tpc_event->GetTPs()) {
+    // Add current TP to the collection
+    event_adc_sum += tp.adc_int;
+    event_tp_multiplicity++;
+	}
+	adc_sum.push_back(event_adc_sum);
+	tp_multiplicity.push_back(event_tp_multiplicity);
+
+  if (event_adc_sum > adc_cut) return 1;
   else return 0;
 }
