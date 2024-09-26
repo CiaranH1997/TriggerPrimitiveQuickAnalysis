@@ -112,7 +112,9 @@ std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string tpfile, int file_typ
   for (Long64_t i = 0; i < nEntries; ++i) {
     tree->GetEntry(i);
     TP event_tp = {ChannelID, ROP_ID, Time_peak, ADC_integral, tpEvent};
-    v_TP.push_back(event_tp);
+    if (Time_peak >= 20e3 && Time_peak <= 120e3) {
+      v_TP.push_back(event_tp);
+    }
   }
   std::cout << "Sort by event." << std::endl;
   auto v_v_TPs = sortByEvent(v_TP);
@@ -151,9 +153,6 @@ bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::v
     // Remove old TPs that are outside the time window
     while (!tp_collection.empty() && (tp.time_peak - tp_collection.front().time_peak > time_window)) {
       tp_collection.pop_front();
-    }
-    if (!tp_collection.empty()) {
-		  //std::cout << "Current time peak = " << tp.time_peak << ", earliest time peak = " << tp_collection.front().time_peak << ", WINDOW = " << tp.time_peak - tp_collection.front().time_peak << std::endl;
     }
     // Add current TP to the collection
     tp_collection.push_back(tp);
