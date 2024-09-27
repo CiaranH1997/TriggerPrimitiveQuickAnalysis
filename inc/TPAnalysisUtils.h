@@ -6,15 +6,26 @@
 #include <string>
 #include <memory>  // For std::unique_ptr
 
-#include <TFile.h>
-#include <TTree.h>
+//#include <TFile.h>
+//#include <TTree.h>
 
 #include "Neutrino.h"
 #include "Event.h"
+#include "TPCEvents.h"
 
 std::vector<Neutrino> LoadNuAnaFiles(std::string filename);
 
 std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string nufiles, int file_type);
+
+void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight_nue, std::vector<double> const &ADCCuts, 
+                                 std::vector<double> &ADCCutEff_cos, std::vector<double> &ADCCutEff_nu_cos, TPCEvents &numu_tpc_events, 
+                                 TPCEvents &nue_tpc_events, TPCEvents &cos_tpc_events);
+
+void ApplyADCIntegralThreshold(std::vector<int> &v_adc_sum, std::vector<int> &v_tp_multiplicity, double &ADC_SUM_CUT, 
+                               double &drift_window, std::vector<std::pair<int, bool>> &adc_int_cut_events, TPCEvents &obj_tpc_events);
+
+void ApplyTimeDataFilter(std::vector<int> &v_time_max_adc_sum, std::vector<int> &v_time_max_tp_multiplicity, double &time_filter_ADC_CUT, 
+                         double &time_filter_window, std::vector<std::pair<int, bool>> &time_filter_events, TPCEvents &obj_tpc_events);
 
 namespace cut {
 

@@ -6,7 +6,7 @@
 
 #include <vector>
 
-// A class to hold TPs occuring in a specific TPC
+// A class to hold Events that hold TPs occuring in a specific TPC
 
 class TPCEvents {
   public:

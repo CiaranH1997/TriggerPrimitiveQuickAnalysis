@@ -94,68 +94,11 @@ int main(int argc, char const* argv[]) {
   //----------------------------------------
   std::vector<double> ADCCuts = {1e6, 2e6, 3e6, 4e6, 5e6, 6e6, 7e6, 8e6, 9e6, 10e6, 11e6, 12e6, 13e6, 14e6, 15e6, 16e6, 18e6, 20e6, 22e6, 24e6};
   std::vector<double> ADCCutEff_nu_cos, ADCCutEff_cos;
-
-  TH1D *tempADCInt_adcsum_cos = new TH1D("temp1", "ADC Integral Sum Distribution" , 50, 0, 25e6);
-  tempADCInt_adcsum_cos->SetDirectory(nullptr);
-  TH1D *tempADCInt_adcsum_nu_cos = new TH1D("temp2", "ADC Integral Sum Distribution" , 50, 0, 25e6);
-  tempADCInt_adcsum_nu_cos->SetDirectory(nullptr);
-  for (const auto &cut : ADCCuts) {
-    double drift_window(150e3);
-    std::vector<int> v_numu_adc_sum, v_nue_adc_sum, v_cos_adc_sum;
-    std::vector<int> v_numu_tp_multiplicity, v_nue_tp_multiplicity, v_cos_tp_multiplicity;
-    std::vector<std::pair<int, bool>> numu_adc_int_cut_events, nue_adc_int_cut_events, cos_adc_int_cut_events;
-    for (auto &event : numu_tpc_events.GetTPCEvents()) {
-      if (event) {
-        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_numu_adc_sum, v_numu_tp_multiplicity, event);
-        int event_num = event->GetEventNum();
-        numu_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
-      }
-    }
-    for (auto &event : nue_tpc_events.GetTPCEvents()) {
-      if (event) {
-        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_nue_adc_sum, v_nue_tp_multiplicity, event);
-        int event_num = event->GetEventNum();
-        nue_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
-      }
-    }
-    for (auto &event : cos_tpc_events.GetTPCEvents()) {
-      if (event) {
-        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_cos_adc_sum, v_cos_tp_multiplicity, event);
-        int event_num = event->GetEventNum();
-        cos_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
-      }
-    }
-
-    int count1(0), count2(0), count3(0);
-    for (const auto adc_sum : v_numu_adc_sum) {
-      if (numu_adc_int_cut_events.at(count1).second) {
-        tempADCInt_adcsum_nu_cos->Fill((double)adc_sum, weight_numu);
-      }
-      count1++;
-    }
-    for (const auto adc_sum : v_nue_adc_sum) {
-      if (nue_adc_int_cut_events.at(count2).second) {
-        tempADCInt_adcsum_nu_cos->Fill((double)adc_sum, weight_nue);
-      }
-      count2++;
-    }
-    for (const auto adc_sum : v_cos_adc_sum) {
-      if (cos_adc_int_cut_events.at(count3).second) {
-        tempADCInt_adcsum_cos->Fill((double)adc_sum);
-      }
-      count3++;
-    }
-
-    double eff_nu_adcintsum = 1.0 * tempADCInt_adcsum_nu_cos->GetEntries() / (numu_tpc_events.GetTPCEvents().size() + nue_tpc_events.GetTPCEvents().size());
-    double eff_cos_adcintsum = 1.0 * tempADCInt_adcsum_cos->GetEntries() / cos_tpc_events.GetTPCEvents().size();
-    ADCCutEff_nu_cos.push_back(eff_nu_adcintsum);
-    ADCCutEff_cos.push_back(eff_cos_adcintsum);
-    tempADCInt_adcsum_cos->Reset();
-    tempADCInt_adcsum_nu_cos->Reset();
-  }
-
-  delete tempADCInt_adcsum_cos;
-  delete tempADCInt_adcsum_nu_cos;
+ 
+  // Calculates probability of passing ADC Integral Sum threshold for a series of thresholds
+  CalcProbPassADCIntThreshold(weight_numu, weight_nue, ADCCuts, 
+                              ADCCutEff_cos, ADCCutEff_nu_cos, numu_tpc_events, 
+                              nue_tpc_events, cos_tpc_events);
 	
   TGraph *gEffADCCut_cos = new TGraph((int)ADCCutEff_cos.size(), &ADCCuts[0], &ADCCutEff_cos[0]);
 	TGraph *gEffADCCut_nu_cos = new TGraph((int)ADCCutEff_nu_cos.size(), &ADCCuts[0], &ADCCutEff_nu_cos[0]);
@@ -194,89 +137,29 @@ int main(int argc, char const* argv[]) {
   std::vector<std::pair<int, bool>> numu_adc_int_cut_events, nue_adc_int_cut_events, cos_adc_int_cut_events;
   double ADC_SUM_CUT(10e6);
   double drift_window(150e3);
-  for (auto &event : numu_tpc_events.GetTPCEvents()) {
-    if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(ADC_SUM_CUT, drift_window, v_numu_adc_sum, v_numu_tp_multiplicity, event);
-      int event_num = event->GetEventNum();
-      numu_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
-    }
-  }
-  for (auto &event : nue_tpc_events.GetTPCEvents()) {
-    if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(ADC_SUM_CUT, drift_window, v_nue_adc_sum, v_nue_tp_multiplicity, event);
-      int event_num = event->GetEventNum();
-      nue_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
-    }
-  }
-  for (auto &event : cos_tpc_events.GetTPCEvents()) {
-    if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(ADC_SUM_CUT, drift_window, v_cos_adc_sum, v_cos_tp_multiplicity, event);
-      int event_num = event->GetEventNum();
-      cos_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
-    }
-  }
 
-  for (auto &cut : numu_adc_int_cut_events) {
-      if (!cut.second) {
-        numu_tpc_events.CutEvent(cut.first);
-      }
-  }
-  for (auto &cut : nue_adc_int_cut_events) {
-      if (!cut.second) {
-        nue_tpc_events.CutEvent(cut.first);
-      }
-  }
-  for (auto &cut : cos_adc_int_cut_events) {
-      if (!cut.second) {
-        cos_tpc_events.CutEvent(cut.first);
-      }
-  }
+  ApplyADCIntegralThreshold(v_numu_adc_sum, v_numu_tp_multiplicity, ADC_SUM_CUT, 
+                            drift_window, numu_adc_int_cut_events, numu_tpc_events);
+  ApplyADCIntegralThreshold(v_nue_adc_sum, v_nue_tp_multiplicity, ADC_SUM_CUT, 
+                            drift_window, nue_adc_int_cut_events, nue_tpc_events);
+  ApplyADCIntegralThreshold(v_cos_adc_sum, v_cos_tp_multiplicity, ADC_SUM_CUT, 
+                            drift_window, cos_adc_int_cut_events, cos_tpc_events);
 
   // Time Filter
   //----------------------------------------
-  std::vector<int> v_numu_max_adc_sum, v_nue_max_adc_sum, v_cos_max_adc_sum;
-  std::vector<int> v_numu_max_tp_multiplicity, v_nue_max_tp_multiplicity, v_cos_max_tp_multiplicity;
+  std::vector<int> v_numu_time_max_adc_sum, v_nue_time_max_adc_sum, v_cos_time_max_adc_sum;
+  std::vector<int> v_numu_time_max_tp_multiplicity, v_nue_time_max_tp_multiplicity, v_cos_time_max_tp_multiplicity;
   std::vector<std::pair<int, bool>> numu_time_filter_events, nue_time_filter_events, cos_time_filter_events;
   double time_filter_ADC_CUT(4e6);
   double time_filter_window(20e3);
 
-  for (auto &event : numu_tpc_events.GetTPCEvents()) {
-    if (event) {
-      bool pass_time_filter = cut::TimeFilterAlg(time_filter_ADC_CUT, time_filter_window, v_numu_max_adc_sum, v_numu_max_tp_multiplicity, event);
-      int event_num = event->GetEventNum();
-      numu_adc_int_cut_events.push_back({event_num, pass_time_filter});
-    }
-  }
-  for (auto &event : nue_tpc_events.GetTPCEvents()) {
-    if (event) {
-      bool pass_time_filter = cut::TimeFilterAlg(time_filter_ADC_CUT, time_filter_window, v_nue_max_adc_sum, v_nue_max_tp_multiplicity, event);
-      int event_num = event->GetEventNum();
-      nue_adc_int_cut_events.push_back({event_num, pass_time_filter});
-    }
-  }
-  for (auto &event : cos_tpc_events.GetTPCEvents()) {
-    if (event) {
-      bool pass_time_filter = cut::TimeFilterAlg(time_filter_ADC_CUT, time_filter_window, v_cos_max_adc_sum, v_cos_max_tp_multiplicity, event);
-      int event_num = event->GetEventNum();
-      cos_adc_int_cut_events.push_back({event_num, pass_time_filter});
-    }
-  }
+  ApplyTimeDataFilter(v_numu_time_max_adc_sum, v_numu_time_max_tp_multiplicity, time_filter_ADC_CUT, 
+                      time_filter_window, numu_time_filter_events, numu_tpc_events);
+  ApplyTimeDataFilter(v_nue_time_max_adc_sum, v_nue_time_max_tp_multiplicity, time_filter_ADC_CUT, 
+                      time_filter_window, nue_time_filter_events, nue_tpc_events);
+  ApplyTimeDataFilter(v_cos_time_max_adc_sum, v_cos_time_max_tp_multiplicity, time_filter_ADC_CUT, 
+                      time_filter_window, cos_time_filter_events, cos_tpc_events);
 
-  for (auto &cut : numu_time_filter_events) {
-      if (!cut.second) {
-        numu_tpc_events.CutEvent(cut.first);
-      }
-  }
-  for (auto &cut : nue_time_filter_events) {
-      if (!cut.second) {
-        nue_tpc_events.CutEvent(cut.first);
-      }
-  }
-  for (auto &cut : cos_time_filter_events) {
-      if (!cut.second) {
-        cos_tpc_events.CutEvent(cut.first);
-      }
-  }
   
   // Cuts applied, now fill histograms
   //----------------------------------------
@@ -326,13 +209,13 @@ int main(int argc, char const* argv[]) {
   TH1D *hADCInt_time_nu_cos = new TH1D(("hTimeFilterNeutrino" + tpc_str).c_str(), ("ADC Integral Sum Distribution in 20k Tick Window in TPC " + std::to_string(TPC)).c_str() , 50, 0, 25e6);
   hADCInt_time_nu_cos->SetDirectory(nullptr);
 
-  for (const auto max_adc_sum : v_numu_max_adc_sum) {
+  for (const auto max_adc_sum : v_numu_time_max_adc_sum) {
     hADCInt_time_nu_cos->Fill((double)max_adc_sum, weight_numu);
   }
-  for (const auto max_adc_sum : v_nue_max_adc_sum) {
+  for (const auto max_adc_sum : v_nue_time_max_adc_sum) {
     hADCInt_time_nu_cos->Fill((double)max_adc_sum, weight_nue);
   }
-  for (const auto max_adc_sum : v_cos_max_adc_sum) {
+  for (const auto max_adc_sum : v_cos_time_max_adc_sum) {
     hADCInt_time_cos->Fill((double)max_adc_sum);
   }
 
@@ -380,20 +263,26 @@ int main(int argc, char const* argv[]) {
 int ParseArgs(int argc, const char** argv, std::vector<std::string> &files, std::vector<std::string> &nuana_files, int &TPC, bool &update) {
 
   int opt(1);
+
+  files.resize(3);
+  nuana_files.resize(2);
+
   while (opt < argc) {
-    if (std::string(argv[opt]) == "--tpnf") { // two nu tp files
+    if (std::string(argv[opt]) == "--tpmu") { // two nu tp files
       opt++;
-      files.push_back(std::string(argv[opt]));
+      files.at(0) = std::string(argv[opt]);
+    } else if (std::string(argv[opt]) == "--tpe") {
       opt++;
-      files.push_back(std::string(argv[opt]));
+      files.at(1) = std::string(argv[opt]);
     } else if (std::string(argv[opt]) == "--tpcf") { // one cosmic
       opt++;
-      files.push_back(std::string(argv[opt]));
-    } else if (std::string(argv[opt]) == "--annf") {
+      files.at(2) = std::string(argv[opt]);
+    } else if (std::string(argv[opt]) == "--anmu") {
       opt++;
-      nuana_files.push_back(std::string(argv[opt]));
+      nuana_files.at(0) = std::string(argv[opt]);
+    } else if (std::string(argv[opt]) == "--ane") {
       opt++;
-      nuana_files.push_back(std::string(argv[opt]));
+      nuana_files.at(1) = std::string(argv[opt]);
     } else if (std::string(argv[opt]) == "--tpc") {
       opt++;
       TPC = std::strtol(argv[opt], nullptr, 0);
@@ -411,6 +300,15 @@ int ParseArgs(int argc, const char** argv, std::vector<std::string> &files, std:
     std::cout << "[ERROR] Files not loaded." << std::endl;
     return 1;
   }
+  if (files.size() != 3) {
+    std::cout << "[ERROR] Need a numu, nue and cosmic TP file." << std::endl;
+    return 1;
+  }
+  if (nuana_files.size() != 2) {
+    std::cout << "[ERROR] Need a numu and nue analysis file." << std::endl;
+    return 1;
+  }
+
 
   return 0;
 
