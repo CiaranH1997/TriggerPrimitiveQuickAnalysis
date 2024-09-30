@@ -154,22 +154,23 @@ void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight
 
   double drift_window(150e3);
   std::vector<int> v_numu_adc_sum, v_nue_adc_sum, v_cos_adc_sum;
+  std::vector<int> v_numu_adc_sum_events_cut, v_nue_adc_sum_events_cut, v_cos_adc_sum_events_cut;
   std::vector<int> v_numu_tp_multiplicity, v_nue_tp_multiplicity, v_cos_tp_multiplicity;
 
   double null_cut(0); // for total weighted number of events
   for (auto &event : numu_tpc_events.GetTPCEvents()) {
     if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_numu_adc_sum, v_numu_tp_multiplicity, event);
+      bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, event);
     }
   }
   for (auto &event : nue_tpc_events.GetTPCEvents()) {
     if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_nue_adc_sum, v_nue_tp_multiplicity, event);
+      bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, event);
     }
   }
   for (auto &event : cos_tpc_events.GetTPCEvents()) {
     if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_cos_adc_sum, v_cos_tp_multiplicity, event);
+      bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_cos_adc_sum, v_cos_adc_sum_events_cut, v_cos_tp_multiplicity, event);
     }
   }
 
@@ -202,21 +203,21 @@ void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight
     std::vector<std::pair<int, bool>> numu_adc_int_cut_events, nue_adc_int_cut_events, cos_adc_int_cut_events;
     for (auto &event : numu_tpc_events.GetTPCEvents()) {
       if (event) {
-        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_numu_adc_sum, v_numu_tp_multiplicity, event);
+        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, event);
         int event_num = event->GetEventNum();
         numu_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
       }
     }
     for (auto &event : nue_tpc_events.GetTPCEvents()) {
       if (event) {
-        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_nue_adc_sum, v_nue_tp_multiplicity, event);
+        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, event);
         int event_num = event->GetEventNum();
         nue_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
       }
     }
     for (auto &event : cos_tpc_events.GetTPCEvents()) {
       if (event) {
-        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_cos_adc_sum, v_cos_tp_multiplicity, event);
+        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_cos_adc_sum, v_cos_adc_sum_events_cut, v_cos_tp_multiplicity, event);
         int event_num = event->GetEventNum();
         cos_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
       }
@@ -241,9 +242,7 @@ void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight
       }
       count3++;
     }
-    //double eff_nu_adcintsum = 1.0 * tempADCInt_adcsum_nu_cos->GetEntries() / (numu_tpc_events.GetTPCEvents().size() + nue_tpc_events.GetTPCEvents().size());
     double eff_nu_adcintsum = 1.0 * tempADCInt_adcsum_nu_cos->Integral() / total_neutrinos;
-    //double eff_cos_adcintsum = 1.0 * tempADCInt_adcsum_cos->GetEntries() / cos_tpc_events.GetTPCEvents().size();
     double eff_cos_adcintsum = 1.0 * tempADCInt_adcsum_cos->Integral() / total_cosmics;
     ADCCutEff_nu_cos.push_back(eff_nu_adcintsum);
     ADCCutEff_cos.push_back(eff_cos_adcintsum);
@@ -263,11 +262,11 @@ void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight
 }
 
 //------------------------------------
-void ApplyADCIntegralThreshold(std::vector<int> &v_adc_sum, std::vector<int> &v_tp_multiplicity, double &ADC_SUM_CUT, 
+void ApplyADCIntegralThreshold(std::vector<int> &v_adc_sum, std::vector<int> &v_adc_sum_events_cut, std::vector<int> &v_tp_multiplicity, double &ADC_SUM_CUT, 
                                double &drift_window, std::vector<std::pair<int, bool>> &adc_int_cut_events, TPCEvents &obj_tpc_events) {
   for (auto &event : obj_tpc_events.GetTPCEvents()) {
     if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(ADC_SUM_CUT, drift_window, v_adc_sum, v_tp_multiplicity, event);
+      bool pass_adcint_cut = cut::ADCIntegralSumCut(ADC_SUM_CUT, drift_window, v_adc_sum, v_adc_sum_events_cut, v_tp_multiplicity, event);
       int event_num = event->GetEventNum();
       adc_int_cut_events.push_back({event_num, pass_adcint_cut});
     }
@@ -288,7 +287,6 @@ void ApplyTimeDataFilter(std::vector<int> &v_time_max_adc_sum, std::vector<int> 
     if (event) {
       bool pass_time_filter = cut::TimeFilterAlg(time_filter_ADC_CUT, time_filter_window, v_time_max_adc_sum, v_time_max_tp_multiplicity, event);
       int event_num = event->GetEventNum();
-      //numu_adc_int_cut_events.push_back({event_num, pass_time_filter});
       time_filter_events.push_back({event_num, pass_time_filter});
     }
   }
@@ -341,7 +339,7 @@ bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::v
 
 // ADC Intgral Sum cut for online
 //------------------------------------
-bool cut::ADCIntegralSumCut(double const &adc_cut, double const &time_window, std::vector<int> &adc_sum, std::vector<int> &tp_multiplicity, std::unique_ptr<Event> &tpc_event) {
+bool cut::ADCIntegralSumCut(double const &adc_cut, double const &time_window, std::vector<int> &adc_sum, std::vector<int> &adc_sum_events_cut, std::vector<int> &tp_multiplicity, std::unique_ptr<Event> &tpc_event) {
 
   int event_adc_sum(0);
   int event_tp_multiplicity(0);
@@ -353,6 +351,9 @@ bool cut::ADCIntegralSumCut(double const &adc_cut, double const &time_window, st
 	adc_sum.push_back(event_adc_sum);
 	tp_multiplicity.push_back(event_tp_multiplicity);
 
-  if (event_adc_sum > adc_cut) return 1;
+  if (event_adc_sum > adc_cut) {
+    adc_sum_events_cut.push_back(event_adc_sum);
+    return 1;
+  }
   else return 0;
 }

@@ -6,9 +6,6 @@
 #include <string>
 #include <memory>  // For std::unique_ptr
 
-//#include <TFile.h>
-//#include <TTree.h>
-
 #include "Neutrino.h"
 #include "Event.h"
 #include "TPCEvents.h"
@@ -21,7 +18,7 @@ void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight
                                  std::vector<double> &ADCCutEff_cos, std::vector<double> &ADCCutEff_nu_cos, TPCEvents &numu_tpc_events, 
                                  TPCEvents &nue_tpc_events, TPCEvents &cos_tpc_events);
 
-void ApplyADCIntegralThreshold(std::vector<int> &v_adc_sum, std::vector<int> &v_tp_multiplicity, double &ADC_SUM_CUT, 
+void ApplyADCIntegralThreshold(std::vector<int> &v_adc_sum, std::vector<int> &v_adc_sum_events_cut, std::vector<int> &v_tp_multiplicity, double &ADC_SUM_CUT, 
                                double &drift_window, std::vector<std::pair<int, bool>> &adc_int_cut_events, TPCEvents &obj_tpc_events);
 
 void ApplyTimeDataFilter(std::vector<int> &v_time_max_adc_sum, std::vector<int> &v_time_max_tp_multiplicity, double &time_filter_ADC_CUT, 
@@ -32,7 +29,7 @@ namespace cut {
   // Time filter for offline
   bool TimeFilterAlg(double const &adc_cut, double const &time_window, std::vector<int> &max_adc_sum, std::vector<int> &max_tp_multiplicity, std::unique_ptr<Event> &tpc_event);
   // ADC Integral Sum cut for online trigger
-  bool ADCIntegralSumCut(double const &adc_cut, double const &time_window, std::vector<int> &adc_sum, std::vector<int> &tp_multiplicity, std::unique_ptr<Event> &tpc_event);
+  bool ADCIntegralSumCut(double const &adc_cut, double const &time_window, std::vector<int> &adc_sum, std::vector<int> &adc_sum_events_cut, std::vector<int> &tp_multiplicity, std::unique_ptr<Event> &tpc_event);
 
 }
 
