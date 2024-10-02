@@ -13,7 +13,6 @@ void NeutrinoEvent::InitialiseTruth(int truth_event, double E, int tpcid, int pd
 
 void NeutrinoEvent::InitialiseTruth(Neutrino in_nu) {
 
-  std::cout << "event_num = " << event_num << "; neutrino number = " << in_nu.event_num << std::endl;
   if (event_num == in_nu.event_num) {
     nu = in_nu;
   } else {

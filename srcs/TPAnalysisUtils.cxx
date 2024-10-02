@@ -75,7 +75,7 @@ std::vector<Neutrino> LoadNuAnaFiles(std::string filename) {
 }
 
 //------------------------------------
-std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string tpfile, int file_type) {
+std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string tpfile, int file_type, double &drift_window) {
 
   TFile *file = TFile::Open(tpfile.c_str(), "READ");
   if (!file || file->IsZombie()) {
@@ -116,9 +116,19 @@ std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string tpfile, int file_typ
   for (Long64_t i = 0; i < nEntries; ++i) {
     tree->GetEntry(i);
     TP event_tp = {ChannelID, ROP_ID, Time_peak, ADC_integral, tpEvent};
-    //if (Time_peak >= 20e3 && Time_peak <= 120e3) {
-    v_TP.push_back(event_tp);
-    //}
+    // Neutrino time peak offset from zero by ~17.75k ticks
+    if (file_type == 1) {
+      if ((Time_peak - 17.75e3) <= drift_window) {
+        v_TP.push_back(event_tp);
+      }
+    } else if (file_type == 0) { 
+      if (Time_peak <= drift_window) {
+        v_TP.push_back(event_tp);
+      }
+    } else {
+      std::cout << "[ERROR] unknown file type" << std::endl;
+      exit(1);
+    }
   }
   std::cout << "Sort by event." << std::endl;
   auto v_v_TPs = sortByEvent(v_TP);
@@ -144,15 +154,14 @@ std::vector<std::unique_ptr<Event>> LoadTPFiles(std::string tpfile, int file_typ
 }
 
 //------------------------------------
-void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight_nue, std::vector<double> const &ADCCuts, 
+void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight_nue, double const &drift_window, std::vector<double> const &ADCCuts, 
                                  std::vector<double> &ADCCutEff_cos, std::vector<double> &ADCCutEff_nu_cos, TPCEvents &numu_tpc_events, 
-                                 TPCEvents &nue_tpc_events, TPCEvents &cos_tpc_events) {
+                                 TPCEvents &nue_tpc_events, TPCEvents &cos_tpc_events, int const &alg_type) {
   TH1D *tempADCInt_adcsum_cos = new TH1D("temp1", "ADC Integral Sum Distribution" , 50, 0, 25e6);
   tempADCInt_adcsum_cos->SetDirectory(nullptr);
   TH1D *tempADCInt_adcsum_nu_cos = new TH1D("temp2", "ADC Integral Sum Distribution" , 50, 0, 25e6);
   tempADCInt_adcsum_nu_cos->SetDirectory(nullptr);
 
-  double drift_window(150e3);
   std::vector<int> v_numu_adc_sum, v_nue_adc_sum, v_cos_adc_sum;
   std::vector<int> v_numu_adc_sum_events_cut, v_nue_adc_sum_events_cut, v_cos_adc_sum_events_cut;
   std::vector<int> v_numu_tp_multiplicity, v_nue_tp_multiplicity, v_cos_tp_multiplicity;
@@ -160,17 +169,29 @@ void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight
   double null_cut(0); // for total weighted number of events
   for (auto &event : numu_tpc_events.GetTPCEvents()) {
     if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, event);
+      if (alg_type == 0) {
+        bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, event);
+      } else if (alg_type == 1) {
+        bool pass_adcint_cut = cut::TimeFilterAlg(null_cut, drift_window, v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, event);
+      }
     }
   }
   for (auto &event : nue_tpc_events.GetTPCEvents()) {
     if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, event);
+      if (alg_type == 0) {
+        bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, event);
+      } else if (alg_type == 1) {
+        bool pass_adcint_cut = cut::TimeFilterAlg(null_cut, drift_window, v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, event);
+      }
     }
   }
   for (auto &event : cos_tpc_events.GetTPCEvents()) {
     if (event) {
-      bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_cos_adc_sum, v_cos_adc_sum_events_cut, v_cos_tp_multiplicity, event);
+      if (alg_type == 0) {
+        bool pass_adcint_cut = cut::ADCIntegralSumCut(null_cut, drift_window, v_cos_adc_sum, v_cos_adc_sum_events_cut, v_cos_tp_multiplicity, event);
+      } else if (alg_type == 1) {
+        bool pass_adcint_cut = cut::TimeFilterAlg(null_cut, drift_window, v_cos_adc_sum, v_cos_adc_sum_events_cut, v_cos_tp_multiplicity, event);
+      }
     }
   }
 
@@ -203,21 +224,36 @@ void CalcProbPassADCIntThreshold(double const &weight_numu, double const &weight
     std::vector<std::pair<int, bool>> numu_adc_int_cut_events, nue_adc_int_cut_events, cos_adc_int_cut_events;
     for (auto &event : numu_tpc_events.GetTPCEvents()) {
       if (event) {
-        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, event);
+        bool pass_adcint_cut(false);
+        if (alg_type == 0) {
+          pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, event);
+        } else if (alg_type == 1) {
+          pass_adcint_cut = cut::TimeFilterAlg(cut, drift_window, v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, event);
+        }
         int event_num = event->GetEventNum();
         numu_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
       }
     }
     for (auto &event : nue_tpc_events.GetTPCEvents()) {
       if (event) {
-        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, event);
+        bool pass_adcint_cut(false);
+        if (alg_type == 0) {
+          pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, event);
+        } else if (alg_type == 1) {
+          pass_adcint_cut = cut::TimeFilterAlg(cut, drift_window, v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, event);
+        }
         int event_num = event->GetEventNum();
         nue_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
       }
     }
     for (auto &event : cos_tpc_events.GetTPCEvents()) {
       if (event) {
-        bool pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_cos_adc_sum, v_cos_adc_sum_events_cut, v_cos_tp_multiplicity, event);
+        bool pass_adcint_cut(false);
+        if (alg_type == 0) {
+          pass_adcint_cut = cut::ADCIntegralSumCut(cut, drift_window, v_cos_adc_sum, v_cos_adc_sum_events_cut, v_cos_tp_multiplicity, event);
+        } else if (alg_type == 1) {
+          pass_adcint_cut = cut::TimeFilterAlg(cut, drift_window, v_cos_adc_sum, v_cos_adc_sum_events_cut, v_cos_tp_multiplicity, event);
+        }
         int event_num = event->GetEventNum();
         cos_adc_int_cut_events.push_back({event_num, pass_adcint_cut});
       }
@@ -280,12 +316,13 @@ void ApplyADCIntegralThreshold(std::vector<int> &v_adc_sum, std::vector<int> &v_
 }
 
 //------------------------------------
-void ApplyTimeDataFilter(std::vector<int> &v_time_max_adc_sum, std::vector<int> &v_time_max_tp_multiplicity, double &time_filter_ADC_CUT, 
-                         double &time_filter_window, std::vector<std::pair<int, bool>> &time_filter_events, TPCEvents &obj_tpc_events) {
+void ApplyTimeDataFilter(std::vector<int> &v_time_max_adc_sum, std::vector<int> &v_time_max_adc_sum_events_cut, std::vector<int> &v_time_max_tp_multiplicity, 
+                         double &time_filter_ADC_CUT, double &time_filter_window, std::vector<std::pair<int, bool>> &time_filter_events, TPCEvents &obj_tpc_events) {
 
   for (auto &event : obj_tpc_events.GetTPCEvents()) {
     if (event) {
-      bool pass_time_filter = cut::TimeFilterAlg(time_filter_ADC_CUT, time_filter_window, v_time_max_adc_sum, v_time_max_tp_multiplicity, event);
+      bool pass_time_filter = cut::TimeFilterAlg(time_filter_ADC_CUT, time_filter_window, v_time_max_adc_sum, 
+                                                 v_time_max_adc_sum_events_cut, v_time_max_tp_multiplicity, event);
       int event_num = event->GetEventNum();
       time_filter_events.push_back({event_num, pass_time_filter});
     }
@@ -302,7 +339,7 @@ void ApplyTimeDataFilter(std::vector<int> &v_time_max_adc_sum, std::vector<int> 
 
 // Time filter for offline
 //------------------------------------
-bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::vector<int> &max_adc_sum, std::vector<int> &max_tp_multiplicity, std::unique_ptr<Event> &tpc_event) {
+bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::vector<int> &max_adc_sum, std::vector<int> &max_adc_sum_events_cut, std::vector<int> &max_tp_multiplicity, std::unique_ptr<Event> &tpc_event) {
 
   std::deque<TP> tp_collection;
   int event_max_adc_sum(0);
@@ -333,7 +370,10 @@ bool cut::TimeFilterAlg(double const &adc_cut, double const &time_window, std::v
 	max_tp_multiplicity.push_back(event_max_tp_multiplicity);
 	tp_collection.clear();
 
-  if (event_max_adc_sum > adc_cut) return 1;
+  if (event_max_adc_sum > adc_cut) {
+    max_adc_sum_events_cut.push_back(event_max_adc_sum);
+    return 1;
+  }
   else return 0;
 }
 

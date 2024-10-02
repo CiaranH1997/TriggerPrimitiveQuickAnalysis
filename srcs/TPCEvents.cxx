@@ -58,10 +58,8 @@ void TPCEvents::CutOutOfTPCNeutrinos() {
       }
     }
   }
-  std::cout << "Size of temp = " << temp.size() << "; And size of tpc_events = " << tpc_events.size() << std::endl;
   tpc_events.clear();
   tpc_events = std::move(temp);
-  std::cout << "Size of tpc_events NOW = " << tpc_events.size() << std::endl;
 }
 
 //-------------------------------
@@ -80,8 +78,6 @@ void TPCEvents::CutEvent(std::unique_ptr<Event> &event) {
   for (auto &evs : tpc_events) {
     if (evs && evs->GetEventNum() != event->GetEventNum()) {
       temp.emplace_back(std::move(evs));
-    } else if (evs) { 
-      std::cout << "Removing event " << event->GetEventNum() << std::endl; 
     } else {
       std::cout << "[WARNING] Null event pointer." << std::endl;
     }
@@ -96,8 +92,6 @@ void TPCEvents::CutEvent(int &event_num) {
   for (auto &evs : tpc_events) {
     if (evs && evs->GetEventNum() != event_num) {
       temp.emplace_back(std::move(evs));
-    } else if (evs) { 
-      std::cout << "Removing event " << event_num << std::endl; 
     } else {
       std::cout << "[WARNING] Null event pointer." << std::endl;
     }

@@ -28,10 +28,12 @@ int main(int argc, char const* argv[]) {
   std::vector<std::string> nuana_files;
   int TPC(2); // default TPC ID
   double ADC_SUM_CUT(10e6); // default threshold
-  double drift_window(193e3);
+  // This application needs the full 3 ms drift window at the point the TPs are read in 
+  double full_drift_window(193e3);
+  double small_time_window(20e3);
   bool update_output(false);
 
-  int parseArgResult = ParseArgs(argc, argv, files, nuana_files, TPC, ADC_SUM_CUT, drift_window, update_output);
+  int parseArgResult = ParseArgs(argc, argv, files, nuana_files, TPC, ADC_SUM_CUT, small_time_window, update_output);
   if(parseArgResult != 0){
     return 1;
   }
@@ -58,9 +60,9 @@ int main(int argc, char const* argv[]) {
 
   std::vector<std::unique_ptr<Event>> numu_event_tps, nue_event_tps, cos_event_tps;
 
-  numu_event_tps = LoadTPFiles(files.at(0), neutrino_type, drift_window); 
-  nue_event_tps = LoadTPFiles(files.at(1), neutrino_type, drift_window); 
-  cos_event_tps = LoadTPFiles(files.at(2), cosmic_type, drift_window); 
+  numu_event_tps = LoadTPFiles(files.at(0), neutrino_type, full_drift_window); 
+  nue_event_tps = LoadTPFiles(files.at(1), neutrino_type, full_drift_window); 
+  cos_event_tps = LoadTPFiles(files.at(2), cosmic_type, full_drift_window); 
 
   std::cout << "TP files loaded." << std::endl;
 
@@ -102,15 +104,14 @@ int main(int argc, char const* argv[]) {
   std::vector<double> ADCCutEff_nu_cos, ADCCutEff_cos;
  
   // Calculates probability of passing ADC Integral Sum threshold for a series of thresholds
-  double small_time_window(20e3);
   CalcProbPassADCIntThreshold(weight_numu, weight_nue, small_time_window, ADCCuts, 
                               ADCCutEff_cos, ADCCutEff_nu_cos, numu_tpc_events, 
-                              nue_tpc_events, cos_tpc_events);
+                              nue_tpc_events, cos_tpc_events, 1); // ADCSimpleWindowAlg 
 	
   TGraph *gEffADCCut_cos = new TGraph((int)ADCCutEff_cos.size(), &ADCCuts[0], &ADCCutEff_cos[0]);
 	TGraph *gEffADCCut_nu_cos = new TGraph((int)ADCCutEff_nu_cos.size(), &ADCCuts[0], &ADCCutEff_nu_cos[0]);
 	
-  std::string grtpc_str = "_tpc" + std::to_string(TPC) + "_time" + std::to_string(drift_window);
+  std::string grtpc_str = "_tpc" + std::to_string(TPC) + "_time" + std::to_string(small_time_window);
 
   gEffADCCut_cos->SetName(("gADCIntSumCosEff" + grtpc_str).c_str());
   gEffADCCut_nu_cos->SetName(("gADCIntSumNuCosEff" + grtpc_str).c_str());
@@ -147,37 +148,75 @@ int main(int argc, char const* argv[]) {
   std::vector<int> v_numu_tp_multiplicity, v_nue_tp_multiplicity, v_cos_tp_multiplicity;
   // Pair describing which events have passed threshold
   std::vector<std::pair<int, bool>> numu_adc_int_cut_events, nue_adc_int_cut_events, cos_adc_int_cut_events;
-  //double drift_window(150e3);
 
-  ApplyADCIntegralThreshold(v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, ADC_SUM_CUT, 
-                            drift_window, numu_adc_int_cut_events, numu_tpc_events);
-  ApplyADCIntegralThreshold(v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, ADC_SUM_CUT, 
-                            drift_window, nue_adc_int_cut_events, nue_tpc_events);
-  ApplyADCIntegralThreshold(v_cos_adc_sum, v_nue_adc_sum_events_cut, v_cos_tp_multiplicity, ADC_SUM_CUT, 
-                            drift_window, cos_adc_int_cut_events, cos_tpc_events);
-
-  // Time Filter
-  //----------------------------------------
-  std::vector<int> v_numu_time_max_adc_sum, v_nue_time_max_adc_sum, v_cos_time_max_adc_sum;
-  std::vector<int> v_numu_time_max_adc_sum_events_cut, v_nue_time_max_adc_sum_events_cut, v_cos_time_max_adc_sum_events_cut;
-  std::vector<int> v_numu_time_max_tp_multiplicity, v_nue_time_max_tp_multiplicity, v_cos_time_max_tp_multiplicity;
-  std::vector<std::pair<int, bool>> numu_time_filter_events, nue_time_filter_events, cos_time_filter_events;
-  double time_filter_ADC_CUT(4e6);
-  double time_filter_window(20e3);
-
-  ApplyTimeDataFilter(v_numu_time_max_adc_sum, v_numu_time_max_adc_sum_events_cut, v_numu_time_max_tp_multiplicity, time_filter_ADC_CUT, 
-                      time_filter_window, numu_time_filter_events, numu_tpc_events);
-  ApplyTimeDataFilter(v_nue_time_max_adc_sum, v_nue_time_max_adc_sum_events_cut, v_nue_time_max_tp_multiplicity, time_filter_ADC_CUT, 
-                      time_filter_window, nue_time_filter_events, nue_tpc_events);
-  ApplyTimeDataFilter(v_cos_time_max_adc_sum, v_cos_time_max_adc_sum_events_cut, v_cos_time_max_tp_multiplicity, time_filter_ADC_CUT, 
-                      time_filter_window, cos_time_filter_events, cos_tpc_events);
+  ApplyTimeDataFilter(v_numu_adc_sum, v_numu_adc_sum_events_cut, v_numu_tp_multiplicity, ADC_SUM_CUT, 
+                      small_time_window, numu_adc_int_cut_events, numu_tpc_events);
+  ApplyTimeDataFilter(v_nue_adc_sum, v_nue_adc_sum_events_cut, v_nue_tp_multiplicity, ADC_SUM_CUT, 
+                      small_time_window, nue_adc_int_cut_events, nue_tpc_events);
+  ApplyTimeDataFilter(v_cos_adc_sum, v_cos_adc_sum_events_cut, v_cos_tp_multiplicity, ADC_SUM_CUT, 
+                      small_time_window, cos_adc_int_cut_events, cos_tpc_events);
 
   
+  TFile *outfile = new TFile("outADCSimpleWindow.root", update_output ? "UPDATE" : "RECREATE");
+  
+  std::string tree_tpc_str = "_tpc" + std::to_string(TPC) + "_time" + std::to_string(small_time_window);
+  
+  TTree *AnaTree_numu = new TTree(("AnaTree_numu" + tree_tpc_str).c_str(), "Event numu analysis.");
+
+  int adc_int_event_numu;
+  double energy_numu;
+  int tpc_id_numu;
+  int pdg_numu;
+  int ccnc_numu;
+  int event_num_numu;
+
+  AnaTree_numu->Branch("Event", &event_num_numu);
+  AnaTree_numu->Branch("ADCIntSum", &adc_int_event_numu);
+  AnaTree_numu->Branch("Energy", &energy_numu);
+  AnaTree_numu->Branch("TPCID", &tpc_id_numu);
+  AnaTree_numu->Branch("NuPDG", &pdg_numu);
+  AnaTree_numu->Branch("NuCCNC", &ccnc_numu);
+
+  for (int i = 0; i < (int)numu_tpc_events.GetTPCEvents().size(); i++) {
+    energy_numu = numu_tpc_events.GetTPCEvents().at(i)->GetNeutrino().nu_energy;
+    tpc_id_numu = numu_tpc_events.GetTPCEvents().at(i)->GetNeutrino().tpc_id;
+    pdg_numu = numu_tpc_events.GetTPCEvents().at(i)->GetNeutrino().nu_pdg;
+    ccnc_numu = numu_tpc_events.GetTPCEvents().at(i)->GetNeutrino().nu_ccnc;
+    event_num_numu = numu_tpc_events.GetTPCEvents().at(i)->GetNeutrino().event_num;
+    adc_int_event_numu = v_numu_adc_sum_events_cut.at(i);
+    AnaTree_numu->Fill();
+  }
+
+  TTree *AnaTree_nue = new TTree(("AnaTree_nue" + tree_tpc_str).c_str(), "Event nue analysis.");
+
+  int adc_int_event_nue;
+  double energy_nue;
+  int tpc_id_nue;
+  int pdg_nue;
+  int ccnc_nue;
+  int event_num_nue;
+
+  AnaTree_nue->Branch("Event", &event_num_nue);
+  AnaTree_nue->Branch("ADCIntSum", &adc_int_event_nue);
+  AnaTree_nue->Branch("Energy", &energy_nue);
+  AnaTree_nue->Branch("TPCID", &tpc_id_nue);
+  AnaTree_nue->Branch("NuPDG", &pdg_nue);
+  AnaTree_nue->Branch("NuCCNC", &ccnc_nue);
+
+  for (int i = 0; i < nue_tpc_events.GetTPCEvents().size(); i++) {
+    energy_nue = nue_tpc_events.GetTPCEvents().at(i)->GetNeutrino().nu_energy;
+    tpc_id_nue = nue_tpc_events.GetTPCEvents().at(i)->GetNeutrino().tpc_id;
+    pdg_nue = nue_tpc_events.GetTPCEvents().at(i)->GetNeutrino().nu_pdg;
+    ccnc_nue = nue_tpc_events.GetTPCEvents().at(i)->GetNeutrino().nu_ccnc;
+    event_num_nue = nue_tpc_events.GetTPCEvents().at(i)->GetNeutrino().event_num;
+    adc_int_event_nue = v_nue_adc_sum_events_cut.at(i);
+    AnaTree_nue->Fill();
+  }
   // Cuts applied, now fill histograms
   //----------------------------------------
   std::cout << "Cuts applied, now fill histograms." << std::endl;
  
-  std::string tpc_str = "_tpc" + std::to_string(TPC) + "_time" + std::to_string(drift_window);
+  std::string tpc_str = "_tpc" + std::to_string(TPC) + "_time" + std::to_string(small_time_window);
 
   TH1D *hADCInt_adcsum_cos = new TH1D(("hADCIntSumCosmic" + tpc_str).c_str(), ("ADC Integral Sum Distribution in TPC " + std::to_string(TPC)).c_str(), 50, 0, 25e6);
   hADCInt_adcsum_cos->SetDirectory(nullptr);
@@ -216,63 +255,24 @@ int main(int argc, char const* argv[]) {
   hADCInt_adcsum_nu_cos->GetYaxis()->SetTitleSize(0.045);
   hADCInt_adcsum_nu_cos->GetYaxis()->SetLabelSize(0.045);
 
-  TH1D *hADCInt_time_cos = new TH1D(("hTimeFilterCosmic" + tpc_str).c_str(), ("ADC Integral Sum Distribution in 20k Tick Window in TPC " + std::to_string(TPC)).c_str(), 50, 0, 25e6);
-  hADCInt_time_cos->SetDirectory(nullptr);
-  TH1D *hADCInt_time_nu_cos = new TH1D(("hTimeFilterNeutrino" + tpc_str).c_str(), ("ADC Integral Sum Distribution in 20k Tick Window in TPC " + std::to_string(TPC)).c_str() , 50, 0, 25e6);
-  hADCInt_time_nu_cos->SetDirectory(nullptr);
-
-  for (const auto max_adc_sum : v_numu_time_max_adc_sum) {
-    hADCInt_time_nu_cos->Fill((double)max_adc_sum, weight_numu);
-  }
-  for (const auto max_adc_sum : v_nue_time_max_adc_sum) {
-    hADCInt_time_nu_cos->Fill((double)max_adc_sum, weight_nue);
-  }
-  for (const auto max_adc_sum : v_cos_time_max_adc_sum) {
-    hADCInt_time_cos->Fill((double)max_adc_sum);
-  }
-
-  std::cout << "Histograms filled." << std::endl;
-
-  hADCInt_time_cos->Scale(1/hADCInt_time_cos->Integral());
-  hADCInt_time_nu_cos->Scale(1/hADCInt_time_nu_cos->Integral());
-
-  hADCInt_time_cos->SetLineWidth(3);
-  hADCInt_time_cos->SetLineColor(kBlue+1);
-  hADCInt_time_nu_cos->SetLineWidth(3);
-  hADCInt_time_nu_cos->SetLineColor(kRed+1);
-  
-  hADCInt_time_cos->GetXaxis()->SetTitle("ADC Integral Sum (ADC)");
-  hADCInt_time_cos->GetXaxis()->SetTitleSize(0.045);
-  hADCInt_time_cos->GetXaxis()->SetLabelSize(0.045);
-  hADCInt_time_cos->GetYaxis()->SetTitleSize(0.045);
-  hADCInt_time_cos->GetYaxis()->SetLabelSize(0.045);
-  
-  hADCInt_time_nu_cos->GetXaxis()->SetTitle("ADC Integral Sum (ADC)");
-  hADCInt_time_nu_cos->GetXaxis()->SetTitleSize(0.045);
-  hADCInt_time_nu_cos->GetXaxis()->SetLabelSize(0.045);
-  hADCInt_time_nu_cos->GetYaxis()->SetTitleSize(0.045);
-  hADCInt_time_nu_cos->GetYaxis()->SetLabelSize(0.045);
-
-  TFile *outfile = new TFile("outTimeFilter.root", update_output ? "UPDATE" : "RECREATE");
   mgeff->Write();
+  AnaTree_numu->Write();
+  AnaTree_nue->Write();
   gEffADCCut_nu_cos->Write();
   gEffADCCut_cos->Write();
   hADCInt_adcsum_nu_cos->Write();
   hADCInt_adcsum_cos->Write();
-  hADCInt_time_nu_cos->Write();
-  hADCInt_time_cos->Write();
 
   outfile->Close();
 
   delete hADCInt_adcsum_nu_cos;
   delete hADCInt_adcsum_cos;
-  delete hADCInt_time_nu_cos;
-  delete hADCInt_time_cos;
 
   return 0;
 }
 
-int ParseArgs(int argc, const char** argv, std::vector<std::string> &files, std::vector<std::string> &nuana_files, int &TPC, double &ADC_CUT, double &drift_window, bool &update) {
+int ParseArgs(int argc, const char** argv, std::vector<std::string> &files, std::vector<std::string> &nuana_files, int &TPC, 
+              double &ADC_CUT, double &drift_window, bool &update) {
 
   int opt(1);
 
