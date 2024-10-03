@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#DATADIR=CERN_Data/ProtoDUNE_DM
 DATADIR=CERN_Data/ProtoDUNE_DM/TriggerPrimitiveAnalysisData
 
 # TPC 2 default 3ms window
